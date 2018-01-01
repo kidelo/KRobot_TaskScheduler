@@ -156,16 +156,22 @@ class Task {
   _TASK_SCOPE:
     void reset();
 
-    volatile __task_status    iStatus;
-    volatile unsigned long    iInterval;             // execution interval in milliseconds (or microseconds). 0 - immediate
-    volatile unsigned long    iDelay;                // actual delay until next execution (usually equal iInterval)
-    volatile unsigned long    iPreviousMillis;       // previous invocation time (millis).  Next invocation = iPreviousMillis + iInterval.  Delayed tasks will "catch up" 
+    __task_status    iStatus;
+
+    // volatile unsigned long    iInterval;             // execution interval in milliseconds (or microseconds). 0 - immediate
+    // volatile unsigned long    iDelay;                // actual delay until next execution (usually equal iInterval)
+    // volatile unsigned long    iPreviousMillis;       // previous invocation time (millis).  Next invocation = iPreviousMillis + iInterval.  Delayed tasks will "catch up"
+
+    uint16_t                  iInterval;             // execution interval in milliseconds (or microseconds). 0 - immediate
+    uint16_t                  iDelay;                // actual delay until next execution (usually equal iInterval)
+    uint32_t                  iPreviousMillis;       // previous invocation time (millis).  Next invocation = iPreviousMillis + iInterval.  Delayed tasks will "catch up"
+
 #ifdef _TASK_TIMECRITICAL
     volatile long             iOverrun;              // negative if task is "catching up" to it's schedule (next invocation time is already in the past)
     volatile long             iStartDelay;           // actual execution of the task's callback method was delayed by this number of millis
 #endif  // _TASK_TIMECRITICAL
-    volatile long             iIterations;           // number of iterations left. 0 - last iteration. -1 - infinite iterations
-    long                      iSetIterations;        // number of iterations originally requested (for restarts)
+    int16_t                   iIterations;           // number of iterations left. 0 - last iteration. -1 - infinite iterations
+    int16_t                   iSetIterations;        // number of iterations originally requested (for restarts)
     unsigned long             iRunCounter;           // current number of iteration (starting with 1). Resets on enable. 
     TaskCallback              iCallback;             // pointer to the void callback method
     TaskOnEnable              iOnEnable;             // pointer to the bolol OnEnable callback method

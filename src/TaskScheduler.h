@@ -599,7 +599,8 @@ void Scheduler::deleteTask(Task& aTask) {
  * @param aRecursive - if true, tasks of the higher priority chains are disabled as well recursively
  */
 void Scheduler::disableAll(bool aRecursive) {
-    Task    *current = iFirst;
+  (void)aRecursive;
+  Task    *current = iFirst;
     while (current) {
         current->disable();
         current = current->iNext;
@@ -614,6 +615,7 @@ void Scheduler::disableAll(bool aRecursive) {
  * @param aRecursive - if true, tasks of the higher priority chains are enabled as well recursively
  */
  void Scheduler::enableAll(bool aRecursive) {
+   (void)aRecursive;
     Task    *current = iFirst;
     while (current) {
         current->enable();
@@ -652,6 +654,7 @@ void Scheduler::allowSleep(bool aState) {
 
 
 void Scheduler::startNow( bool aRecursive ) {
+    (void)aRecursive;
     unsigned long t = _TASK_TIME_FUNCTION();
     
     iCurrent = iFirst;
