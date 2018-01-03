@@ -78,12 +78,8 @@ class StatusRequest {
 #ifdef _TASK_STD_FUNCTION
 #include <functional>
 typedef std::function<void()> TaskCallback;
-typedef std::function<void()> TaskOnDisable;
-typedef std::function<bool()> TaskOnEnable;
 #else
 typedef void (*TaskCallback)();
-typedef void (*TaskOnDisable)();
-typedef bool (*TaskOnEnable)();
 #endif
 
 typedef struct  {
@@ -100,11 +96,11 @@ class Scheduler;
 class Task {
   friend class Scheduler;
   public:
-    Task(unsigned long aInterval=0, long aIterations=0, TaskCallback aCallback=NULL, Scheduler* aScheduler=NULL, bool aEnable=false, TaskOnEnable aOnEnable=NULL, TaskOnDisable aOnDisable=NULL);
+    Task(unsigned long aInterval=0, long aIterations=0, TaskCallback aCallback=NULL, Scheduler* aScheduler=NULL, bool aEnable=false);
 #ifdef _TASK_STATUS_REQUEST
-    Task(TaskCallback aCallback=NULL, Scheduler* aScheduler=NULL, TaskOnEnable aOnEnable=NULL, TaskOnDisable aOnDisable=NULL);
+    Task(TaskCallback aCallback=NULL, Scheduler* aScheduler=NULL);
 #endif  // _TASK_STATUS_REQUEST
-    ~Task();
+    virtual ~Task();
 
     void enable();
     bool enableIfNot();
@@ -115,15 +111,20 @@ class Task {
     void restartDelayed(unsigned long aDelay=0);
     bool disable();
     bool isEnabled();
-    void set(unsigned long aInterval, long aIterations, TaskCallback aCallback,TaskOnEnable aOnEnable=NULL, TaskOnDisable aOnDisable=NULL);
+    void set(unsigned long aInterval, long aIterations, TaskCallback aCallback);
     void setInterval(unsigned long aInterval);
     unsigned long getInterval();
     void setIterations(long aIterations);
     long getIterations();
     unsigned long getRunCounter() ;
-    void setCallback(TaskCallback aCallback) ;
-    void setOnEnable(TaskOnEnable aCallback) ;
-    void setOnDisable(TaskOnDisable aCallback) ;
+    void setCallback(TaskCallback aCallback);
+
+    // default callback method
+    virtual void run()
+    {
+      if ( iCallback ) iCallback();
+    }
+
     void yield(TaskCallback aCallback);
     void yieldOnce(TaskCallback aCallback);
     bool isFirstIteration() ;
@@ -174,8 +175,8 @@ class Task {
     int16_t                   iSetIterations;        // number of iterations originally requested (for restarts)
     unsigned long             iRunCounter;           // current number of iteration (starting with 1). Resets on enable. 
     TaskCallback              iCallback;             // pointer to the void callback method
-    TaskOnEnable              iOnEnable;             // pointer to the bolol OnEnable callback method
-    TaskOnDisable             iOnDisable;            // pointer to the void OnDisable method
+    // TaskOnEnable              iOnEnable;             // pointer to the bolol OnEnable callback method
+    // TaskOnDisable             iOnDisable;            // pointer to the void OnDisable method
     Task                     *iPrev, *iNext;         // pointers to the previous and next tasks in the chain
     Scheduler                *iScheduler;            // pointer to the current scheduler
 #ifdef _TASK_STATUS_REQUEST

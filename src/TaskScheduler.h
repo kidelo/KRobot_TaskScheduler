@@ -192,9 +192,9 @@ extern "C" {
 /** Constructor, uses default values for the parameters
  * so could be called with no parameters.
  */
-Task::Task( unsigned long aInterval, long aIterations, TaskCallback aCallback, Scheduler* aScheduler, bool aEnable, TaskOnEnable aOnEnable, TaskOnDisable aOnDisable ) {
+Task::Task( unsigned long aInterval, long aIterations, TaskCallback aCallback, Scheduler* aScheduler, bool aEnable ) {
     reset();
-    set(aInterval, aIterations, aCallback, aOnEnable, aOnDisable);
+    set(aInterval, aIterations, aCallback);
     if (aScheduler) aScheduler->addTask(*this);
 #ifdef _TASK_STATUS_REQUEST
     iStatusRequest = NULL;
@@ -221,9 +221,9 @@ Task::~Task() {
 /** Constructor with reduced parameter list for tasks created for 
  *  StatusRequest only triggering (always immediate and only 1 iteration)
  */
-Task::Task( TaskCallback aCallback, Scheduler* aScheduler, TaskOnEnable aOnEnable, TaskOnDisable aOnDisable ) {
+Task::Task( TaskCallback aCallback, Scheduler* aScheduler ) {
     reset();
-    set(TASK_IMMEDIATE, TASK_ONCE, aCallback, aOnEnable, aOnDisable);
+    set(TASK_IMMEDIATE, TASK_ONCE);
     if (aScheduler) aScheduler->addTask(*this);
     iStatusRequest = NULL;
 #ifdef _TASK_WDT_IDS
@@ -299,10 +299,6 @@ unsigned long Task::getRunCounter() { return iRunCounter; }
 
 void Task::setCallback(TaskCallback aCallback) { iCallback = aCallback; }
 
-void Task::setOnEnable(TaskOnEnable aCallback) { iOnEnable = aCallback; }
-
-void Task::setOnDisable(TaskOnDisable aCallback) { iOnDisable = aCallback; }
-    
 /** Resets (initializes) the task/
  * Task is not enabled and is taken out 
  * out of the execution chain as a result
@@ -336,15 +332,11 @@ void Task::reset() {
  * @param aInterval - execution interval in ms
  * @param aIterations - number of iterations, use -1 for no limit
  * @param aCallback - pointer to the callback method which executes the task actions
- * @param aOnEnable - pointer to the callback method which is called on enable()
- * @param aOnDisable - pointer to the callback method which is called on disable()
  */
-void Task::set(unsigned long aInterval, long aIterations, TaskCallback aCallback, TaskOnEnable aOnEnable, TaskOnDisable aOnDisable) {
+void Task::set(unsigned long aInterval, long aIterations, TaskCallback aCallback) {
     setInterval(aInterval); 
     iSetIterations = iIterations = aIterations;
     iCallback = aCallback;
-    iOnEnable = aOnEnable;
-    iOnDisable = aOnDisable;
 }
 
 /** Sets number of iterations for the task
@@ -384,17 +376,7 @@ void Task::yieldOnce (TaskCallback aCallback) {
 void Task::enable() {
     if (iScheduler) { // activation without active scheduler does not make sense
         iRunCounter = 0;
-        if ( iOnEnable && !iStatus.inonenable ) {
-            Task *current = iScheduler->iCurrent;
-            iScheduler->iCurrent = this;
-            iStatus.inonenable = true;      // Protection against potential infinite loop
-            iStatus.enabled = iOnEnable();
-            iStatus.inonenable = false;     // Protection against potential infinite loop
-            iScheduler->iCurrent = current;
-        }
-        else {
-            iStatus.enabled = true;
-        }
+        iStatus.enabled = true;
         iPreviousMillis = _TASK_TIME_FUNCTION() - (iDelay = iInterval);
 #ifdef _TASK_STATUS_REQUEST
         if ( iStatus.enabled ) {
@@ -417,8 +399,8 @@ bool Task::enableIfNot() {
  * and schedules it for execution after a delay = aInterval
  */
 void Task::enableDelayed(unsigned long aDelay) {
-    enable();
-    delay(aDelay);
+  enable();
+  delay(aDelay);
 }
 
 /** Delays Task for execution after a delay = aInterval (if task is enabled).
@@ -457,12 +439,6 @@ bool Task::disable() {
     bool previousEnabled = iStatus.enabled;
     iStatus.enabled = false;
     iStatus.inonenable = false; 
-    if (previousEnabled && iOnDisable) {
-        Task *current = iScheduler->iCurrent;
-        iScheduler->iCurrent = this;
-        iOnDisable();
-        iScheduler->iCurrent = current;
-    }
 #ifdef _TASK_STATUS_REQUEST
     iMyStatusRequest.signalComplete();
 #endif
@@ -771,10 +747,8 @@ bool Scheduler::execute() {
 #endif  // _TASK_TIMECRITICAL
 
                 iCurrent->iDelay = i;
-                if ( iCurrent->iCallback ) {
-                    iCurrent->iCallback();
-                    idleRun = false;
-                }
+                iCurrent->run();
+                idleRun = false;
             }
         } while (0);    //guaranteed single run - allows use of "break" to exit 
         iCurrent = iCurrent->iNext;
@@ -788,12 +762,9 @@ bool Scheduler::execute() {
 
 #ifdef ARDUINO_ARCH_AVR // Could be used only for AVR-based boards. 
       set_sleep_mode(SLEEP_MODE_IDLE);
-      sleep_enable();
       /* Now enter sleep mode. */
       sleep_mode();
       
-      /* The program will continue from here after the timer timeout ~1 ms */
-      sleep_disable(); /* First thing to do is disable sleep. */
 #endif // ARDUINO_ARCH_AVR
 
 #ifdef ARDUINO_ARCH_ESP8266
